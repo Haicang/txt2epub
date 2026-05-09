@@ -27,6 +27,7 @@ Txt2EPUB 是一个本地浏览器应用，可以把单个 `.txt` 文件转换成
 - 中英文网页界面。
 - 第一版支持单文件转换。
 - 自动或手动选择 TXT 编码。
+- 从 TXT 前 10 行自动识别作者并填入元数据。
 - 根据检测到的章节生成 EPUB 目录。
 - 一级目录。
 - EPUB 元数据字段：
@@ -127,6 +128,7 @@ The app uses modern browser APIs such as `File`, `Blob`, `TextDecoder`, and loca
 - Chinese and English web interface.
 - Single-file conversion in the first version.
 - Automatic or manual TXT encoding selection.
+- Automatic author detection from the first 10 TXT lines.
 - EPUB table of contents generated from detected chapters.
 - One-level table of contents.
 - EPUB metadata fields:

@@ -31,6 +31,7 @@
 
   const PREVIEW_CHAPTER_LIMIT = 98;
   const UI_LANGUAGE_KEY = "txt2epub.uiLanguage";
+  const AUTHOR_SCAN_LINE_LIMIT = 10;
 
   const I18N = {
     "zh-CN": {
@@ -211,6 +212,12 @@
       if (!els.title.value.trim()) {
         els.title.value = stripExtension(file.name);
       }
+      if (!els.author.value.trim()) {
+        const author = detectAuthorFromText(state.text);
+        if (author) {
+          els.author.value = author;
+        }
+      }
 
       els.fileSize.textContent = formatBytes(file.size);
       els.convertBtn.disabled = false;
@@ -267,6 +274,42 @@
       identifier: makeUuid(),
       modified: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
     };
+  }
+
+  function detectAuthorFromText(text) {
+    const lines = text.split("\n").slice(0, AUTHOR_SCAN_LINE_LIMIT);
+    const patterns = [
+      /(?:^|[《〈「『"\[][^》〉」』"\]]{1,80}[》〉」』"\]]\s*)?(?:作者|作\s*者|著者|编者|撰者|原著|作者名)\s*[:：=]\s*(.+)$/i,
+      /^(?:作者|作\s*者|著者|编者|撰者|原著|作者名)\s+(.+)$/i,
+      /^(?:文|文案|by|author|written\s+by)\s*[:：=]\s*(.+)$/i,
+      /^by\s+(.+)$/i,
+      /^author\s+(.+)$/i,
+    ];
+
+    for (const line of lines) {
+      const value = line.trim();
+      if (!value) continue;
+
+      for (const pattern of patterns) {
+        const match = value.match(pattern);
+        if (!match) continue;
+
+        const author = cleanDetectedAuthor(match[1]);
+        if (author) return author;
+      }
+    }
+
+    return "";
+  }
+
+  function cleanDetectedAuthor(value) {
+    return String(value || "")
+      .replace(/(?:[，,;；|｜/].*)$/, "")
+      .replace(/\s*(?:著|撰|编|作品|出品)\s*$/i, "")
+      .replace(/^\s*[：:=]\s*/, "")
+      .replace(/^["“”'‘’《〈「『【\[]+|["“”'‘’》〉」』】\]]+$/g, "")
+      .trim()
+      .replace(/\s+/g, " ");
   }
 
   function decodeText(buffer, requestedEncoding) {
