@@ -74,6 +74,8 @@
       moreChapters: "另有 {count} 个章节",
       unsupportedEncoding: "当前浏览器不支持 {encoding} 解码",
       unsupportedCover: "封面图片请选择 JPG、PNG、GIF 或 SVG",
+      coverCanvasFailed: "当前浏览器无法生成 JPG 封面",
+      coverConvertFailed: "当前浏览器无法把封面图片转换为 JPG",
     },
     en: {
       appTitle: "Txt2EPUB",
@@ -116,6 +118,8 @@
       moreChapters: "{count} more chapters",
       unsupportedEncoding: "This browser does not support {encoding} decoding",
       unsupportedCover: "Choose a JPG, PNG, GIF, or SVG cover image",
+      coverCanvasFailed: "This browser cannot generate a JPG cover",
+      coverConvertFailed: "This browser cannot convert the cover image to JPG",
     },
   };
 
@@ -429,20 +433,21 @@
       if (!MIME_TYPES[ext]) {
         throw new Error(t("unsupportedCover"));
       }
+      const bytes = ext === "jpg" || ext === "jpeg" ? new Uint8Array(await file.arrayBuffer()) : await convertImageFileToJpeg(file);
       return {
-        path: `images/cover.${ext}`,
-        mediaType: file.type || MIME_TYPES[ext] || "image/jpeg",
-        bytes: new Uint8Array(await file.arrayBuffer()),
-        isSvg: ext === "svg",
+        path: "images/cover.jpg",
+        mediaType: "image/jpeg",
+        bytes,
+        isSvg: false,
       };
     }
 
-    const svg = makeCoverSvg(metadata);
+    const jpeg = await makeCoverJpeg(metadata);
     return {
-      path: "images/cover.svg",
-      mediaType: "image/svg+xml",
-      bytes: utf8Bytes(svg),
-      isSvg: true,
+      path: "images/cover.jpg",
+      mediaType: "image/jpeg",
+      bytes: jpeg,
+      isSvg: false,
     };
   }
 
@@ -503,6 +508,7 @@
     <dc:creator>${xmlEscape(metadata.author)}</dc:creator>
     <dc:language>${xmlEscape(metadata.language)}</dc:language>
 ${publisher}${description}    <meta property="dcterms:modified">${xmlEscape(metadata.modified)}</meta>
+    <meta name="cover" content="cover-image"/>
   </metadata>
   <manifest>
     <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
@@ -515,6 +521,9 @@ ${chapterManifest}
     <itemref idref="cover-page"/>
 ${chapterSpine}
   </spine>
+  <guide>
+    <reference type="cover" title="Cover" href="cover.xhtml"/>
+  </guide>
 </package>`;
   }
 
@@ -614,22 +623,225 @@ ol {
 }`;
   }
 
-  function makeCoverSvg(metadata) {
-    const titleLines = wrapSvgText(metadata.title, 11, 4);
-    const author = metadata.author || "未知作者";
-    const titleTspans = titleLines
-      .map((line, index) => `<tspan x="800" dy="${index === 0 ? 0 : 86}">${xmlEscape(line)}</tspan>`)
-      .join("");
+  async function makeCoverJpeg(metadata) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1600;
+    canvas.height = 2400;
 
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="2400" viewBox="0 0 1600 2400">
-  <rect width="1600" height="2400" fill="#f6f4ef"/>
-  <rect x="108" y="108" width="1384" height="2184" rx="24" fill="#fffefa" stroke="#216869" stroke-width="10"/>
-  <path d="M260 560H1340" stroke="#d7a942" stroke-width="10"/>
-  <path d="M360 1840H1240" stroke="#216869" stroke-width="6"/>
-  <text x="800" y="960" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="96" font-weight="700" fill="#222426">${titleTspans}</text>
-  <text x="800" y="1580" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="48" fill="#697179">${xmlEscape(author)}</text>
-</svg>`;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error(t("coverCanvasFailed"));
+    }
+
+    ctx.fillStyle = "#f6f4ef";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#fffefa";
+    ctx.strokeStyle = "#216869";
+    ctx.lineWidth = 10;
+    drawRoundedRect(ctx, 108, 108, 1384, 2184, 24);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.strokeStyle = "#d7a942";
+    ctx.lineWidth = 10;
+    drawLine(ctx, 260, 560, 1340, 560);
+
+    ctx.strokeStyle = "#216869";
+    ctx.lineWidth = 6;
+    drawLine(ctx, 360, 1840, 1240, 1840);
+
+    ctx.fillStyle = "#222426";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const titleLayout = fitCoverTitle(ctx, metadata.title || t("untitledBook"));
+    ctx.font = titleLayout.font;
+    drawCanvasLines(ctx, titleLayout.lines, 800, 980, titleLayout.lineHeight, titleLayout.maxWidth);
+
+    ctx.fillStyle = "#697179";
+    ctx.font = coverFont("400", 76);
+    ctx.fillText(metadata.author || t("unknownAuthor"), 800, 1580, 1100);
+
+    const blob = await canvasToBlob(canvas, "image/jpeg", 0.92);
+    return new Uint8Array(await blob.arrayBuffer());
+  }
+
+  async function convertImageFileToJpeg(file) {
+    try {
+      const image = await loadImage(file);
+      const canvas = document.createElement("canvas");
+      canvas.width = 1600;
+      canvas.height = 2400;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error(t("coverCanvasFailed"));
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      drawImageContain(ctx, image, canvas.width, canvas.height);
+
+      if (typeof image.close === "function") {
+        image.close();
+      }
+
+      const blob = await canvasToBlob(canvas, "image/jpeg", 0.92);
+      return new Uint8Array(await blob.arrayBuffer());
+    } catch (error) {
+      throw new Error(t("coverConvertFailed"));
+    }
+  }
+
+  async function loadImage(file) {
+    if ("createImageBitmap" in window) {
+      try {
+        return await createImageBitmap(file);
+      } catch (error) {
+        // Fall back to HTMLImageElement for formats the bitmap decoder rejects.
+      }
+    }
+
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(image);
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error(t("coverConvertFailed")));
+      };
+      image.src = url;
+    });
+  }
+
+  function drawImageContain(ctx, image, targetWidth, targetHeight) {
+    const imageWidth = image.width || image.naturalWidth;
+    const imageHeight = image.height || image.naturalHeight;
+    const scale = Math.min(targetWidth / imageWidth, targetHeight / imageHeight);
+    const width = imageWidth * scale;
+    const height = imageHeight * scale;
+    const x = (targetWidth - width) / 2;
+    const y = (targetHeight - height) / 2;
+    ctx.drawImage(image, x, y, width, height);
+  }
+
+  function drawRoundedRect(ctx, x, y, width, height, radius) {
+    const right = x + width;
+    const bottom = y + height;
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(right - radius, y);
+    ctx.quadraticCurveTo(right, y, right, y + radius);
+    ctx.lineTo(right, bottom - radius);
+    ctx.quadraticCurveTo(right, bottom, right - radius, bottom);
+    ctx.lineTo(x + radius, bottom);
+    ctx.quadraticCurveTo(x, bottom, x, bottom - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+
+  function drawLine(ctx, x1, y1, x2, y2) {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  function fitCoverTitle(ctx, title) {
+    const maxWidth = 1160;
+    const maxLines = 4;
+    const minSize = 126;
+    const maxSize = 176;
+
+    for (let size = maxSize; size >= minSize; size -= 10) {
+      ctx.font = coverFont("700", size);
+      const lines = wrapCanvasText(ctx, title, maxWidth, maxLines);
+      if (!lines.some((line) => line.endsWith("..."))) {
+        return {
+          font: ctx.font,
+          lines,
+          lineHeight: Math.round(size * 1.18),
+          maxWidth,
+        };
+      }
+    }
+
+    ctx.font = coverFont("700", minSize);
+    return {
+      font: ctx.font,
+      lines: wrapCanvasText(ctx, title, maxWidth, maxLines),
+      lineHeight: Math.round(minSize * 1.18),
+      maxWidth,
+    };
+  }
+
+  function coverFont(weight, size) {
+    return `${weight} ${size}px Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif`;
+  }
+
+  function drawCanvasLines(ctx, lines, x, y, lineHeight, maxWidth) {
+    const startY = y - ((lines.length - 1) * lineHeight) / 2;
+    lines.forEach((line, index) => {
+      ctx.fillText(line, x, startY + index * lineHeight, maxWidth);
+    });
+  }
+
+  function wrapCanvasText(ctx, text, maxWidth, maxLines) {
+    const value = String(text || "").trim() || t("untitledBook");
+    const hasCjk = /[\u3400-\u9FFF]/.test(value);
+    const tokens = hasCjk ? Array.from(value) : value.split(/(\s+)/).filter(Boolean);
+    const lines = [];
+    let current = "";
+
+    for (const token of tokens) {
+      const candidate = current ? `${current}${token}` : token.trimStart();
+      if (ctx.measureText(candidate).width <= maxWidth || !current) {
+        current = candidate;
+        continue;
+      }
+
+      lines.push(current.trim());
+      current = token.trimStart();
+      if (lines.length === maxLines) break;
+    }
+
+    if (lines.length < maxLines && current.trim()) {
+      lines.push(current.trim());
+    }
+
+    if (lines.length > maxLines) {
+      lines.length = maxLines;
+    }
+
+    const consumedLength = lines.join(hasCjk ? "" : " ").length;
+    if (consumedLength < value.length && lines.length) {
+      lines[lines.length - 1] = truncateCanvasText(ctx, lines[lines.length - 1], maxWidth);
+    }
+
+    return lines.length ? lines : [t("untitledBook")];
+  }
+
+  function truncateCanvasText(ctx, text, maxWidth) {
+    const ellipsis = "...";
+    let value = text;
+    while (value.length > 1 && ctx.measureText(`${value}${ellipsis}`).width > maxWidth) {
+      value = value.slice(0, -1);
+    }
+    return `${value}${ellipsis}`;
+  }
+
+  function canvasToBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error(t("coverCanvasFailed")));
+        },
+        type,
+        quality,
+      );
+    });
   }
 
   function makeZip(files) {
@@ -834,18 +1046,6 @@ ol {
   function countMatches(text, pattern) {
     const matches = text.match(pattern);
     return matches ? matches.length : 0;
-  }
-
-  function wrapSvgText(text, maxChars, maxLines) {
-    const chars = Array.from(text || "未命名书籍");
-    const lines = [];
-    for (let i = 0; i < chars.length && lines.length < maxLines; i += maxChars) {
-      lines.push(chars.slice(i, i + maxChars).join(""));
-    }
-    if (chars.length > maxChars * maxLines) {
-      lines[lines.length - 1] = `${lines[lines.length - 1].slice(0, Math.max(1, maxChars - 1))}…`;
-    }
-    return lines;
   }
 
   function makeUuid() {

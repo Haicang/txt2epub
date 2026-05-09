@@ -35,7 +35,7 @@ Txt2EPUB 是一个本地浏览器应用，可以把单个 `.txt` 文件转换成
   - 语言
   - 出版方
   - 简介
-- 未选择封面图片时自动生成文字封面。
+- 未选择封面图片时自动生成 JPG 文字封面。
 - 可选上传封面。
 - EPUB 正文会保留原 TXT 中的空格和换行。
 
@@ -77,7 +77,7 @@ Txt2EPUB 是一个本地浏览器应用，可以把单个 `.txt` 文件转换成
 - GIF
 - SVG
 
-如果没有上传封面，本应用会根据标题和作者生成一个简单的 SVG 封面。
+如果没有上传封面，本应用会根据标题和作者生成一个简单的 JPG 封面，并写入 EPUB 封面元数据。上传 PNG、GIF 或 SVG 时，也会转换成 JPG 后写入 EPUB。
 
 ## 预览行为
 
@@ -135,7 +135,7 @@ The app uses modern browser APIs such as `File`, `Blob`, `TextDecoder`, and loca
   - language
   - publisher
   - description
-- Automatic text cover when no cover image is selected.
+- Automatic JPG text cover when no cover image is selected.
 - Optional cover upload.
 - Original TXT spaces and line breaks are preserved in the EPUB body.
 
@@ -177,7 +177,7 @@ Supported uploaded cover formats:
 - GIF
 - SVG
 
-If no cover is uploaded, the app generates a simple SVG cover from the title and author.
+If no cover is uploaded, the app generates a simple JPG cover from the title and author and writes EPUB cover metadata. Uploaded PNG, GIF, or SVG covers are also converted to JPG before they are written into the EPUB.
 
 ## Preview Behavior
 
