@@ -628,7 +628,6 @@ ${items}
     return `body {
   margin: 0;
   padding: 1.2em;
-  color: #222;
   font-family: serif;
   line-height: 1.65;
 }
