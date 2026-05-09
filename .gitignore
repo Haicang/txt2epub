@@ -1,0 +1,47 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs and diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependencies and package managers
+node_modules/
+.pnpm-store/
+
+# Frontend build output and caches
+dist/
+build/
+.cache/
+.parcel-cache/
+.vite/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Generated books and temporary exports
+*.epub
+*.mobi
+*.azw3
+tmp/
+temp/
