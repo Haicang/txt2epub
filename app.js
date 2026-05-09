@@ -667,9 +667,13 @@ ol {
   }
 
   async function makeCoverJpeg(metadata) {
+    const width = 1800;
+    const height = 2400;
+    const safeOffsetX = 100;
+    const centerX = width / 2;
     const canvas = document.createElement("canvas");
-    canvas.width = 1600;
-    canvas.height = 2400;
+    canvas.width = width;
+    canvas.height = height;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) {
@@ -682,28 +686,28 @@ ol {
     ctx.fillStyle = "#fffefa";
     ctx.strokeStyle = "#216869";
     ctx.lineWidth = 10;
-    drawRoundedRect(ctx, 108, 108, 1384, 2184, 24);
+    drawRoundedRect(ctx, safeOffsetX + 108, 108, 1384, 2184, 24);
     ctx.fill();
     ctx.stroke();
 
     ctx.strokeStyle = "#d7a942";
     ctx.lineWidth = 10;
-    drawLine(ctx, 260, 560, 1340, 560);
+    drawLine(ctx, safeOffsetX + 260, 560, safeOffsetX + 1340, 560);
 
     ctx.strokeStyle = "#216869";
     ctx.lineWidth = 6;
-    drawLine(ctx, 360, 1840, 1240, 1840);
+    drawLine(ctx, safeOffsetX + 360, 1840, safeOffsetX + 1240, 1840);
 
     ctx.fillStyle = "#222426";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const titleLayout = fitCoverTitle(ctx, metadata.title || t("untitledBook"));
     ctx.font = titleLayout.font;
-    drawCanvasLines(ctx, titleLayout.lines, 800, 980, titleLayout.lineHeight, titleLayout.maxWidth);
+    drawCanvasLines(ctx, titleLayout.lines, centerX, 980, titleLayout.lineHeight, titleLayout.maxWidth);
 
     ctx.fillStyle = "#697179";
     ctx.font = coverFont("400", 76);
-    ctx.fillText(metadata.author || t("unknownAuthor"), 800, 1580, 1100);
+    ctx.fillText(metadata.author || t("unknownAuthor"), centerX, 1580, 1100);
 
     const blob = await canvasToBlob(canvas, "image/jpeg", 0.92);
     return new Uint8Array(await blob.arrayBuffer());
