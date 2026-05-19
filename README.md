@@ -1,15 +1,21 @@
 # Txt2EPUB
 
-Txt2EPUB 是一个本地浏览器应用，可以把单个 `.txt` 文件转换成 `.epub` 文件。它完全在浏览器中运行，因此 TXT 内容和封面图片都会留在你的电脑上。
+Txt2EPUB 是一个本地浏览器应用，可以把单个 `.txt` 文件转换成 `.epub` 文件，也可以把 `.epub` 导出为 `.txt`。它完全在浏览器中运行，因此 TXT、EPUB 内容和封面图片都会留在你的电脑上。
 
 ## 使用方法
 
 1. 在 macOS、Windows 或 Linux 上，用 Chrome、Chromium 或 Edge 打开 `index.html`。
-2. 选择一个 `.txt` 文件。
+2. 打开 **TXT 转 EPUB** 标签页并选择一个 `.txt` 文件。
 3. 按需填写图书元数据。
 4. 可选上传一张封面图片。
 5. 点击 **Generate EPUB** / **生成 EPUB**。
 6. 保存下载的 `.epub` 文件。
+
+EPUB 转 TXT：
+
+1. 打开 **EPUB 转 TXT** 标签页并选择一个 `.epub` 文件。
+2. 点击 **Export TXT** / **导出 TXT**。
+3. 保存下载的 `.txt` 文件。
 
 不需要后端服务、安装依赖包或网络连接。
 
@@ -24,6 +30,8 @@ Txt2EPUB 是一个本地浏览器应用，可以把单个 `.txt` 文件转换成
 ## 功能
 
 - 本地 TXT 转 EPUB。
+- 本地 EPUB 转 TXT。
+- TXT 转 EPUB 和 EPUB 转 TXT 使用独立标签页切换。
 - 中英文网页界面。
 - 第一版支持单文件转换。
 - 自动或手动选择 TXT 编码。
@@ -34,11 +42,13 @@ Txt2EPUB 是一个本地浏览器应用，可以把单个 `.txt` 文件转换成
   - 标题
   - 作者
   - 语言
+  - 前置内容标题
   - 出版方
   - 简介
 - 未选择封面图片时自动生成 JPG 文字封面。
 - 可选上传封面。
 - EPUB 正文会保留原 TXT 中的空格和换行。
+- EPUB 转 TXT 会按 EPUB spine 顺序提取正文。
 
 ## TXT 编码
 
@@ -69,6 +79,10 @@ Txt2EPUB 是一个本地浏览器应用，可以把单个 `.txt` 文件转换成
 
 如果第一章之前存在文本，它会被保留为正文前置内容。
 
+前置内容默认标题为 `开头` / `Front matter`，可以在元数据区域的“前置内容标题”中自定义。
+
+EPUB 转 TXT 时，如果 EPUB 正文中已经包含这些章节标识，会以正文中的章节文本为准，不额外使用目录标题拆章或重复插入目录标题。页面标题、目录标题等结构性章节名会被过滤掉，例如 `第 8 章` 后面紧跟正文里的 `第2章 月漓` 时，会保留 `第2章 月漓`。`内容简介`、`作品简介`、`书籍简介` 等简介页会被识别并作为前置内容保留。只有正文中没有可识别章节标识时，才会使用 EPUB 目录或章节文件标题作为 TXT 中的章节标题。
+
 ## 封面图片
 
 支持上传的封面格式：
@@ -89,7 +103,10 @@ Txt2EPUB 是一个本地浏览器应用，可以把单个 `.txt` 文件转换成
 ## 当前限制
 
 - 每次只能转换一个 TXT 文件。
+- EPUB 转 TXT 每次只能转换一个 EPUB 文件。
 - 不支持嵌套目录或多级目录。
+- EPUB 转 TXT 会读取常见 EPUB 2/3 的 OPF spine 和 nav/NCX 目录，不保留图片、样式和复杂排版。
+- EPUB 转 TXT 支持常见的未压缩和 Deflate 压缩 zip 条目。
 - 非常大的 TXT 文件可能会占用较多浏览器内存。
 - EPUB 校验取决于阅读应用；生成的 EPUB 使用简单的 EPUB 3 结构。
 
@@ -101,16 +118,22 @@ Txt2EPUB 是一个本地浏览器应用，可以把单个 `.txt` 文件转换成
 
 ---
 
-Txt2EPUB is a local browser app for converting a single `.txt` file into an `.epub` file. It runs entirely in the browser, so the TXT content and cover image stay on your computer.
+Txt2EPUB is a local browser app for converting a single `.txt` file into an `.epub` file, and for exporting `.epub` files back to `.txt`. It runs entirely in the browser, so the TXT, EPUB content, and cover image stay on your computer.
 
 ## Usage
 
 1. Open `index.html` in Chrome, Chromium, or Edge on macOS, Windows, or Linux.
-2. Select a `.txt` file.
+2. Open the **TXT to EPUB** tab and select a `.txt` file.
 3. Fill in book metadata if needed.
 4. Optionally upload a cover image.
 5. Click **Generate EPUB** / **生成 EPUB**.
 6. Save the downloaded `.epub` file.
+
+EPUB to TXT:
+
+1. Open the **EPUB to TXT** tab and select an `.epub` file.
+2. Click **Export TXT** / **导出 TXT**.
+3. Save the downloaded `.txt` file.
 
 No backend service, package install, or network connection is required.
 
@@ -125,6 +148,8 @@ The app uses modern browser APIs such as `File`, `Blob`, `TextDecoder`, and loca
 ## Features
 
 - Local TXT to EPUB conversion.
+- Local EPUB to TXT conversion.
+- TXT to EPUB and EPUB to TXT use separate tabs.
 - Chinese and English web interface.
 - Single-file conversion in the first version.
 - Automatic or manual TXT encoding selection.
@@ -135,11 +160,13 @@ The app uses modern browser APIs such as `File`, `Blob`, `TextDecoder`, and loca
   - title
   - author
   - language
+  - front matter title
   - publisher
   - description
 - Automatic JPG text cover when no cover image is selected.
 - Optional cover upload.
 - Original TXT spaces and line breaks are preserved in the EPUB body.
+- EPUB to TXT extracts body content in EPUB spine order.
 
 ## TXT Encoding
 
@@ -170,6 +197,10 @@ The app detects common Chinese and English chapter headings, including:
 
 If text appears before the first detected chapter, it is preserved as a front matter section.
 
+The default front matter title is `开头` / `Front matter`, and it can be customized in the metadata panel.
+
+When exporting EPUB to TXT, if the EPUB body already contains these chapter markers, the body text is treated as the source of truth. Structural page or table-of-contents headings are filtered out, so a heading like `Chapter 8` followed by a body marker like `Chapter 2 Moonlit` keeps the body marker. Intro pages such as `Book Description`, `Synopsis`, and `Summary` are recognized and preserved as front matter. TOC or chapter-file titles are only used as TXT headings when no recognizable chapter markers are found in the body.
+
 ## Cover Images
 
 Supported uploaded cover formats:
@@ -190,7 +221,10 @@ The generated EPUB still includes all detected chapters.
 ## Current Limitations
 
 - Only one TXT file can be converted at a time.
+- EPUB to TXT converts one EPUB file at a time.
 - Nested or multi-level tables of contents are not supported.
+- EPUB to TXT reads common EPUB 2/3 OPF spine data and nav/NCX tables of contents, but does not preserve images, styles, or complex layout.
+- EPUB to TXT supports common stored and Deflate-compressed zip entries.
 - Very large TXT files may use substantial browser memory.
 - EPUB validation depends on the reading app; the generated EPUB follows a simple EPUB 3 structure.
 

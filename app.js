@@ -5,20 +5,28 @@
 
   const els = {
     webLanguage: $("#webLanguage"),
+    txtModeTab: $("#txtModeTab"),
+    epubModeTab: $("#epubModeTab"),
+    txtToEpubPanel: $("#txtToEpubPanel"),
+    epubToTxtPanel: $("#epubToTxtPanel"),
     txtFile: $("#txtFile"),
+    epubFile: $("#epubFile"),
     coverFile: $("#coverFile"),
     encoding: $("#encoding"),
     title: $("#title"),
     author: $("#author"),
     language: $("#language"),
+    frontMatterTitle: $("#frontMatterTitle"),
     publisher: $("#publisher"),
     description: $("#description"),
     convertBtn: $("#convertBtn"),
+    epubConvertBtn: $("#epubConvertBtn"),
     chapterCount: $("#chapterCount"),
     encodingLabel: $("#encodingLabel"),
     fileSize: $("#fileSize"),
     chapterList: $("#chapterList"),
     status: $("#status"),
+    epubStatus: $("#epubStatus"),
   };
 
   const state = {
@@ -26,7 +34,12 @@
     fileName: "",
     detectedEncoding: "",
     chapters: [],
+    metadataEdited: {
+      title: false,
+      author: false,
+    },
     uiLanguage: "zh-CN",
+    activeMode: "txt2epub",
   };
 
   const PREVIEW_CHAPTER_LIMIT = 98;
@@ -36,15 +49,22 @@
   const I18N = {
     "zh-CN": {
       appTitle: "Txt2EPUB",
-      subtitle: "本地 TXT 转 EPUB",
+      subtitle: "本地 TXT 与 EPUB 互转",
       uiLanguage: "网页语言",
+      conversionMode: "转换模式",
+      txtToEpub: "TXT 转 EPUB",
+      epubToTxt: "EPUB 转 TXT",
+      txtWorkspace: "TXT 转 EPUB 工作区",
+      epubWorkspace: "EPUB 转 TXT 工作区",
       generate: "生成 EPUB",
-      workspace: "TXT 转 EPUB 工作区",
+      workspace: "TXT 与 EPUB 互转工作区",
       fileLegend: "文件",
       txtFile: "TXT 文件",
       textEncoding: "文本编码",
       autoDetect: "自动识别",
       coverImage: "封面图片",
+      epubFile: "EPUB 文件",
+      exportTxt: "导出 TXT",
       metadataLegend: "元数据",
       bookTitle: "书名",
       titlePlaceholder: "自动使用文件名",
@@ -52,6 +72,8 @@
       authorPlaceholder: "未知作者",
       bookLanguage: "语言",
       chinese: "中文",
+      frontMatterTitle: "前置内容标题",
+      frontMatterTitlePlaceholder: "默认：开头",
       publisher: "出版者",
       description: "简介",
       preview: "转换预览",
@@ -68,6 +90,13 @@
       generating: "正在生成 EPUB...",
       generated: "已生成 {name}",
       generateFailed: "生成 EPUB 失败",
+      selectEpub: "请选择 EPUB 文件",
+      convertingEpub: "正在转换 EPUB...",
+      convertedTxt: "已导出 {name}",
+      convertEpubFailed: "EPUB 转 TXT 失败",
+      invalidEpub: "无效的 EPUB 文件",
+      unsupportedZipCompression: "当前浏览器不支持这个 EPUB 的压缩方式",
+      noEpubText: "没有在 EPUB 中找到可导出的正文",
       untitledBook: "未命名书籍",
       unknownAuthor: "未知作者",
       fullText: "全文",
@@ -80,15 +109,22 @@
     },
     en: {
       appTitle: "Txt2EPUB",
-      subtitle: "Local TXT to EPUB",
+      subtitle: "Local TXT and EPUB conversion",
       uiLanguage: "Page language",
+      conversionMode: "Conversion mode",
+      txtToEpub: "TXT to EPUB",
+      epubToTxt: "EPUB to TXT",
+      txtWorkspace: "TXT to EPUB workspace",
+      epubWorkspace: "EPUB to TXT workspace",
       generate: "Generate EPUB",
-      workspace: "TXT to EPUB workspace",
+      workspace: "TXT and EPUB workspace",
       fileLegend: "File",
       txtFile: "TXT file",
       textEncoding: "Text encoding",
       autoDetect: "Auto detect",
       coverImage: "Cover image",
+      epubFile: "EPUB file",
+      exportTxt: "Export TXT",
       metadataLegend: "Metadata",
       bookTitle: "Book title",
       titlePlaceholder: "Use file name automatically",
@@ -96,6 +132,8 @@
       authorPlaceholder: "Unknown author",
       bookLanguage: "Book language",
       chinese: "Chinese",
+      frontMatterTitle: "Front matter title",
+      frontMatterTitlePlaceholder: "Default: Front matter",
       publisher: "Publisher",
       description: "Description",
       preview: "Conversion preview",
@@ -112,6 +150,13 @@
       generating: "Generating EPUB...",
       generated: "Generated {name}",
       generateFailed: "Failed to generate EPUB",
+      selectEpub: "Select an EPUB file",
+      convertingEpub: "Converting EPUB...",
+      convertedTxt: "Exported {name}",
+      convertEpubFailed: "Failed to convert EPUB to TXT",
+      invalidEpub: "Invalid EPUB file",
+      unsupportedZipCompression: "This browser does not support this EPUB compression method",
+      noEpubText: "No exportable body text was found in the EPUB",
       untitledBook: "Untitled book",
       unknownAuthor: "Unknown author",
       fullText: "Full text",
@@ -136,6 +181,8 @@
     /^\s*\d{1,4}\s*[.．、]\s+\S.{0,90}$/i,
     /^\s*[一二三四五六七八九十百千万零〇两]{1,8}\s*[、.．]\s*\S.{0,90}$/i,
   ];
+  const INTRO_PAGE_TITLE_PATTERN =
+    /^(?:内容简介|书籍简介|作品简介|小说简介|故事简介|图书简介|简介|内容提要|内容梗概|故事梗概|梗概|文案|导读|出版说明|book\s+description|description|synopsis|summary|introduction|about\s+(?:this\s+)?book)$/i;
 
   const MIME_TYPES = {
     jpg: "image/jpeg",
@@ -146,11 +193,16 @@
   };
 
   els.webLanguage.addEventListener("change", handleWebLanguageChange);
+  els.txtModeTab.addEventListener("click", () => switchMode("txt2epub"));
+  els.epubModeTab.addEventListener("click", () => switchMode("epub2txt"));
   els.txtFile.addEventListener("change", handleTxtFile);
+  els.epubFile.addEventListener("change", handleEpubFile);
   els.encoding.addEventListener("change", handleTxtFile);
   els.convertBtn.addEventListener("click", convertCurrentFile);
-  els.title.addEventListener("input", refreshPreview);
-  els.author.addEventListener("input", refreshPreview);
+  els.epubConvertBtn.addEventListener("click", convertEpubFile);
+  els.title.addEventListener("input", () => handleMetadataInput("title"));
+  els.author.addEventListener("input", () => handleMetadataInput("author"));
+  els.frontMatterTitle.addEventListener("input", refreshPreview);
 
   function initUiLanguage() {
     const savedLanguage = localStorage.getItem(UI_LANGUAGE_KEY);
@@ -165,6 +217,25 @@
     localStorage.setItem(UI_LANGUAGE_KEY, state.uiLanguage);
     applyI18n();
     refreshPreview();
+  }
+
+  function switchMode(mode) {
+    state.activeMode = mode === "epub2txt" ? "epub2txt" : "txt2epub";
+    const isTxtMode = state.activeMode === "txt2epub";
+
+    els.txtModeTab.classList.toggle("is-active", isTxtMode);
+    els.epubModeTab.classList.toggle("is-active", !isTxtMode);
+    els.txtModeTab.setAttribute("aria-selected", String(isTxtMode));
+    els.epubModeTab.setAttribute("aria-selected", String(!isTxtMode));
+    els.txtToEpubPanel.hidden = !isTxtMode;
+    els.epubToTxtPanel.hidden = isTxtMode;
+
+    if (isTxtMode && !state.text) {
+      setStatus(t("selectTxt"));
+    }
+    if (!isTxtMode && !els.epubFile.files[0]) {
+      setEpubStatus(t("selectEpub"));
+    }
   }
 
   function applyI18n() {
@@ -183,6 +254,9 @@
     if (!state.text) {
       setStatus(t("selectTxt"));
     }
+    if (!els.epubFile.files[0]) {
+      setEpubStatus(t("selectEpub"));
+    }
     if (!state.detectedEncoding) {
       els.encodingLabel.textContent = t("notSelected");
     }
@@ -197,6 +271,14 @@
       state.fileName = "";
       state.detectedEncoding = "";
       state.chapters = [];
+      if (!state.metadataEdited.title) {
+        els.title.value = "";
+      }
+      if (!state.metadataEdited.author) {
+        els.author.value = "";
+      }
+      els.fileSize.textContent = "-";
+      els.convertBtn.disabled = true;
       refreshPreview();
       return;
     }
@@ -209,14 +291,11 @@
       state.detectedEncoding = decoded.encoding;
       state.chapters = splitIntoChapters(state.text);
 
-      if (!els.title.value.trim()) {
+      if (!state.metadataEdited.title || !els.title.value.trim()) {
         els.title.value = stripExtension(file.name);
       }
-      if (!els.author.value.trim()) {
-        const author = detectAuthorFromText(state.text);
-        if (author) {
-          els.author.value = author;
-        }
+      if (!state.metadataEdited.author || !els.author.value.trim()) {
+        els.author.value = detectAuthorFromText(state.text) || "";
       }
 
       els.fileSize.textContent = formatBytes(file.size);
@@ -226,10 +305,22 @@
     } catch (error) {
       state.text = "";
       state.chapters = [];
+      els.fileSize.textContent = "-";
       els.convertBtn.disabled = true;
       setStatus(error.message || t("readFailed"), true);
       refreshPreview();
     }
+  }
+
+  function handleMetadataInput(field) {
+    state.metadataEdited[field] = Boolean(els[field].value.trim());
+    refreshPreview();
+  }
+
+  function handleEpubFile() {
+    const file = els.epubFile.files[0];
+    els.epubConvertBtn.disabled = !file;
+    setEpubStatus(file ? t("readFile", { name: file.name }) : t("selectEpub"));
   }
 
   async function convertCurrentFile() {
@@ -257,6 +348,28 @@
       setStatus(error.message || t("generateFailed"), true);
     } finally {
       els.convertBtn.disabled = !state.text;
+    }
+  }
+
+  async function convertEpubFile() {
+    const file = els.epubFile.files[0];
+    if (!file) {
+      setEpubStatus(t("selectEpub"), true);
+      return;
+    }
+
+    try {
+      els.epubConvertBtn.disabled = true;
+      setEpubStatus(t("convertingEpub"));
+
+      const result = await epubToTxt(await file.arrayBuffer(), file.name);
+      const fileName = `${safeFileName(result.title || stripExtension(file.name) || "book")}.txt`;
+      downloadBlob(new Blob([result.text], { type: "text/plain;charset=utf-8" }), fileName);
+      setEpubStatus(t("convertedTxt", { name: fileName }));
+    } catch (error) {
+      setEpubStatus(error.message || t("convertEpubFailed"), true);
+    } finally {
+      els.epubConvertBtn.disabled = !els.epubFile.files[0];
     }
   }
 
@@ -467,6 +580,355 @@
         body: text,
       },
     ];
+  }
+
+  async function epubToTxt(buffer, fileName) {
+    const entries = await readZipEntries(buffer);
+    const containerEntry = findZipEntry(entries, "META-INF/container.xml");
+    if (!containerEntry) throw new Error(t("invalidEpub"));
+
+    const containerXml = parseXml(bytesToText(await zipEntryBytes(containerEntry)));
+    const rootfile = getElementsByLocalName(containerXml, "rootfile")[0];
+    const opfPath = rootfile && normalizeZipPath(rootfile.getAttribute("full-path") || "");
+    const opfEntry = opfPath && findZipEntry(entries, opfPath);
+    if (!opfEntry) throw new Error(t("invalidEpub"));
+
+    const opfBase = pathDirname(opfPath);
+    const opfXml = parseXml(bytesToText(await zipEntryBytes(opfEntry)));
+    const metadata = getElementsByLocalName(opfXml, "metadata")[0] || opfXml;
+    const title = normalizeWhitespace(getFirstTextByLocalName(metadata, "title")) || stripExtension(fileName);
+    const manifest = readManifest(opfXml, opfBase);
+    const spineIds = getElementsByLocalName(opfXml, "itemref")
+      .map((itemref) => itemref.getAttribute("idref"))
+      .filter(Boolean);
+    const tocTitles = await readEpubTocTitles(entries, manifest);
+    const sections = [];
+
+    for (const id of spineIds) {
+      const item = manifest.get(id);
+      const itemEntry = item && findZipEntry(entries, item.path);
+      if (!item || !isHtmlMediaType(item.mediaType) || !itemEntry) continue;
+
+      const section = extractHtmlSection(bytesToText(await zipEntryBytes(itemEntry)));
+      const sectionTitle = tocTitles.get(item.path) || section.title;
+      const sectionText = removeRedundantSectionHeading(section.text, sectionTitle);
+      if (isLikelyCoverSection(item, sectionTitle, sectionText)) continue;
+      if (!sectionText.trim()) continue;
+
+      sections.push({
+        title: sectionTitle,
+        text: sectionText,
+      });
+    }
+
+    const contentText = sections.map((section) => section.text.trim()).filter(Boolean).join("\n\n");
+    if (!contentText.trim()) throw new Error(t("noEpubText"));
+
+    const contentChapters = splitIntoChapters(contentText);
+    const text = contentChapters.length ? makeTxtFromContentSections(sections) : makeTxtFromTocSections(sections);
+
+    return {
+      title,
+      text: `${text.replace(/\s+$/, "")}\n`,
+    };
+  }
+
+  function readManifest(opfXml, opfBase) {
+    const manifest = new Map();
+    for (const item of getElementsByLocalName(opfXml, "item")) {
+      const id = item.getAttribute("id");
+      const href = item.getAttribute("href");
+      if (!id || !href) continue;
+      manifest.set(id, {
+        id,
+        href,
+        path: joinZipPath(opfBase, href),
+        mediaType: item.getAttribute("media-type") || "",
+        properties: item.getAttribute("properties") || "",
+      });
+    }
+    return manifest;
+  }
+
+  async function readEpubTocTitles(entries, manifest) {
+    const titles = new Map();
+    const navItem = Array.from(manifest.values()).find((item) => item.properties.split(/\s+/).includes("nav"));
+    const ncxItem = Array.from(manifest.values()).find((item) => item.mediaType === "application/x-dtbncx+xml");
+    const navEntry = navItem && findZipEntry(entries, navItem.path);
+    const ncxEntry = ncxItem && findZipEntry(entries, ncxItem.path);
+
+    if (navItem && navEntry) {
+      const navDoc = parseHtml(bytesToText(await zipEntryBytes(navEntry)));
+      for (const link of Array.from(navDoc.querySelectorAll("a[href]"))) {
+        const href = link.getAttribute("href");
+        const label = normalizeWhitespace(link.textContent);
+        if (href && label) titles.set(joinZipPath(pathDirname(navItem.path), href), label);
+      }
+    }
+
+    if (!titles.size && ncxItem && ncxEntry) {
+      const ncxXml = parseXml(bytesToText(await zipEntryBytes(ncxEntry)));
+      for (const point of getElementsByLocalName(ncxXml, "navPoint")) {
+        const content = getElementsByLocalName(point, "content")[0];
+        const label = normalizeWhitespace(getFirstTextByLocalName(point, "text"));
+        const src = content && content.getAttribute("src");
+        if (src && label) titles.set(joinZipPath(pathDirname(ncxItem.path), src), label);
+      }
+    }
+
+    return titles;
+  }
+
+  function makeTxtFromTocSections(sections) {
+    return sections
+      .map((section) => {
+        const text = section.text.trim();
+        const title = cleanChapterTitle(section.title || "");
+        if (!title || textStartsWithTitle(text, title)) return text;
+        return `${title}\n\n${text}`;
+      })
+      .filter(Boolean)
+      .join("\n\n");
+  }
+
+  function makeTxtFromContentSections(sections) {
+    return sections
+      .map((section) => {
+        const text = section.text.trim();
+        const title = cleanChapterTitle(section.title || "");
+        if (!text) return "";
+        if (isIntroPageTitle(title) && !splitIntoChapters(text).length && !textStartsWithTitle(text, title)) {
+          return `${title}\n\n${text}`;
+        }
+        return text;
+      })
+      .filter(Boolean)
+      .join("\n\n");
+  }
+
+  function removeRedundantSectionHeading(text, title) {
+    const lines = normalizeLineEndings(text).split("\n");
+    const firstContentIndex = lines.findIndex((line) => line.trim());
+    if (firstContentIndex < 0) return text;
+
+    const firstLine = lines[firstContentIndex].trim();
+    const rest = lines.slice(firstContentIndex + 1).join("\n");
+    if (!splitIntoChapters(rest).length) return text;
+    if (title && normalizeWhitespace(firstLine) === normalizeWhitespace(title)) {
+      return [...lines.slice(0, firstContentIndex), ...lines.slice(firstContentIndex + 1)].join("\n").replace(/^\n+/, "");
+    }
+    if (!isGenericChapterHeading(firstLine)) return text;
+
+    return [...lines.slice(0, firstContentIndex), ...lines.slice(firstContentIndex + 1)].join("\n").replace(/^\n+/, "");
+  }
+
+  function isGenericChapterHeading(line) {
+    const value = line.trim();
+    return (
+      new RegExp(`^第\\s*(?:\\d+|${CHINESE_NUMERAL})\\s*[章节回篇]\\s*$`, "i").test(value) ||
+      new RegExp(`^(?:chapter|chap\\.?)\\s+(?:\\d+|[ivxlcdm]+|${ENGLISH_NUMBER})\\s*$`, "i").test(value)
+    );
+  }
+
+  function isIntroPageTitle(title) {
+    return INTRO_PAGE_TITLE_PATTERN.test(normalizeWhitespace(title));
+  }
+
+  async function readZipEntries(buffer) {
+    const bytes = new Uint8Array(buffer);
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const eocdOffset = findEndOfCentralDirectory(view);
+    if (eocdOffset < 0) throw new Error(t("invalidEpub"));
+
+    const fileCount = view.getUint16(eocdOffset + 10, true);
+    const centralOffset = view.getUint32(eocdOffset + 16, true);
+    const entries = new Map();
+    let offset = centralOffset;
+
+    for (let index = 0; index < fileCount; index += 1) {
+      if (view.getUint32(offset, true) !== 0x02014b50) throw new Error(t("invalidEpub"));
+
+      const flags = view.getUint16(offset + 8, true);
+      const method = view.getUint16(offset + 10, true);
+      const compressedSize = view.getUint32(offset + 20, true);
+      const nameLength = view.getUint16(offset + 28, true);
+      const extraLength = view.getUint16(offset + 30, true);
+      const commentLength = view.getUint16(offset + 32, true);
+      const localOffset = view.getUint32(offset + 42, true);
+      const nameStart = offset + 46;
+      const name = decodeZipName(bytes.slice(nameStart, nameStart + nameLength), flags);
+      const localNameLength = view.getUint16(localOffset + 26, true);
+      const localExtraLength = view.getUint16(localOffset + 28, true);
+      const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+      const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+
+      if (name && !name.endsWith("/")) {
+        entries.set(normalizeZipPath(name), { compressed, method, bytes: null });
+      }
+
+      offset = nameStart + nameLength + extraLength + commentLength;
+    }
+
+    return entries;
+  }
+
+  async function zipEntryBytes(entry) {
+    if (!entry.bytes) {
+      entry.bytes = await inflateZipEntry(entry.compressed, entry.method);
+    }
+    return entry.bytes;
+  }
+
+  function findEndOfCentralDirectory(view) {
+    const minOffset = Math.max(0, view.byteLength - 0xffff - 22);
+    for (let offset = view.byteLength - 22; offset >= minOffset; offset -= 1) {
+      if (view.getUint32(offset, true) === 0x06054b50) return offset;
+    }
+    return -1;
+  }
+
+  async function inflateZipEntry(bytes, method) {
+    if (method === 0) return bytes;
+    if (method !== 8 || !("DecompressionStream" in window)) {
+      throw new Error(t("unsupportedZipCompression"));
+    }
+
+    try {
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    } catch (error) {
+      throw new Error(t("unsupportedZipCompression"));
+    }
+  }
+
+  function decodeZipName(bytes, flags) {
+    const decoder = flags & 0x0800 ? new TextDecoder("utf-8") : new TextDecoder("utf-8");
+    return decoder.decode(bytes);
+  }
+
+  function findZipEntry(entries, path) {
+    const normalized = normalizeZipPath(path);
+    if (entries.has(normalized)) return entries.get(normalized);
+    const lower = normalized.toLowerCase();
+    for (const [name, bytes] of entries) {
+      if (name.toLowerCase() === lower) return bytes;
+    }
+    return null;
+  }
+
+  function parseXml(text) {
+    const doc = new DOMParser().parseFromString(text, "application/xml");
+    if (getElementsByLocalName(doc, "parsererror").length) throw new Error(t("invalidEpub"));
+    return doc;
+  }
+
+  function parseHtml(text) {
+    return new DOMParser().parseFromString(text, "text/html");
+  }
+
+  function extractHtmlSection(html) {
+    const doc = parseHtml(html);
+    const title =
+      normalizeWhitespace(doc.querySelector("h1, h2, h3") && doc.querySelector("h1, h2, h3").textContent) ||
+      normalizeWhitespace(doc.querySelector("title") && doc.querySelector("title").textContent);
+    const body = doc.body || doc.documentElement;
+    const chunks = [];
+    appendPlainText(body, chunks, { skipHeadings: true });
+    return {
+      title,
+      text: normalizeExtractedText(chunks.join("")),
+    };
+  }
+
+  function appendPlainText(node, chunks, options = {}) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      chunks.push(node.nodeValue || "");
+      return;
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+    const tag = node.localName.toLowerCase();
+    if (["script", "style", "svg", "head", "nav"].includes(tag)) return;
+    if (options.skipHeadings && /^h[1-6]$/.test(tag)) return;
+    if (tag === "br") {
+      chunks.push("\n");
+      return;
+    }
+
+    const isBlock = /^(address|article|aside|blockquote|body|dd|div|dl|dt|figcaption|figure|footer|h[1-6]|header|hr|li|main|ol|p|pre|section|table|tbody|td|tfoot|th|thead|tr|ul)$/.test(tag);
+    if (isBlock) chunks.push("\n");
+
+    for (const child of Array.from(node.childNodes)) {
+      appendPlainText(child, chunks, options);
+    }
+
+    if (isBlock) chunks.push("\n");
+  }
+
+  function normalizeExtractedText(text) {
+    return text
+      .replace(/\u00a0/g, " ")
+      .replace(/\r\n?/g, "\n")
+      .replace(/[ \t\f\v]+/g, " ")
+      .split("\n")
+      .map((line) => line.trim())
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  function getElementsByLocalName(root, localName) {
+    return Array.from(root.getElementsByTagName("*")).filter((node) => node.localName === localName);
+  }
+
+  function getFirstTextByLocalName(root, localName) {
+    const element = getElementsByLocalName(root, localName)[0];
+    return element ? element.textContent || "" : "";
+  }
+
+  function bytesToText(bytes) {
+    return new TextDecoder("utf-8").decode(bytes);
+  }
+
+  function isHtmlMediaType(mediaType) {
+    return /(?:application\/xhtml\+xml|text\/html)/i.test(mediaType);
+  }
+
+  function isLikelyCoverSection(item, title, text) {
+    const value = `${item.id} ${item.href} ${item.properties} ${title || ""}`;
+    return /(^|\W)(cover|封面)(\W|$)/i.test(value) && text.trim().length < 220;
+  }
+
+  function textStartsWithTitle(text, title) {
+    const firstLine = text.split("\n").find((line) => line.trim()) || "";
+    return normalizeWhitespace(firstLine) === normalizeWhitespace(title);
+  }
+
+  function joinZipPath(base, href) {
+    const cleanHref = String(href || "").split("#")[0];
+    if (!cleanHref) return normalizeZipPath(base);
+    return normalizeZipPath(base ? `${base}/${cleanHref}` : cleanHref);
+  }
+
+  function pathDirname(path) {
+    const normalized = normalizeZipPath(path);
+    const index = normalized.lastIndexOf("/");
+    return index >= 0 ? normalized.slice(0, index) : "";
+  }
+
+  function normalizeZipPath(path) {
+    const parts = [];
+    for (const part of String(path || "").replace(/\\/g, "/").split("/")) {
+      if (!part || part === ".") continue;
+      if (part === "..") parts.pop();
+      else parts.push(part);
+    }
+    return parts.join("/");
+  }
+
+  function normalizeWhitespace(value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
   }
 
   async function prepareCover(metadata) {
@@ -1027,6 +1489,11 @@ ol {
     els.status.classList.toggle("is-error", Boolean(isError));
   }
 
+  function setEpubStatus(message, isError) {
+    els.epubStatus.textContent = message;
+    els.epubStatus.classList.toggle("is-error", Boolean(isError));
+  }
+
   function resetStatus() {
     setStatus(t("readingTxt"));
   }
@@ -1136,11 +1603,18 @@ ol {
   }
 
   function chapterTitle(chapter, index) {
-    return chapter.title || (chapter.titleKey ? t(chapter.titleKey) : `第 ${index + 1} 章`);
+    return chapter.title || (chapter.titleKey ? titleForKey(chapter.titleKey) : `第 ${index + 1} 章`);
   }
 
   function chapterTitleForPreview(chapter, index) {
-    return chapter.title || (chapter.titleKey ? t(chapter.titleKey) : `#${index + 1}`);
+    return chapter.title || (chapter.titleKey ? titleForKey(chapter.titleKey) : `#${index + 1}`);
+  }
+
+  function titleForKey(key) {
+    if (key === "frontMatter") {
+      return els.frontMatterTitle.value.trim() || t("frontMatter");
+    }
+    return t(key);
   }
 
   function t(key, params) {

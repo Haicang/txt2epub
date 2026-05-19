@@ -1,15 +1,15 @@
 :root {
   color-scheme: light;
-  --bg: #f6f4ef;
-  --panel: #fffefa;
-  --text: #222426;
-  --muted: #697179;
-  --line: #d8d2c6;
-  --accent: #216869;
-  --accent-strong: #164e4f;
-  --accent-soft: #dcebea;
+  --bg: #f5f5f7;
+  --panel: #ffffff;
+  --text: #1d1d1f;
+  --muted: #6e6e73;
+  --line: #d2d2d7;
+  --accent: #0071e3;
+  --accent-strong: #005bb5;
+  --accent-soft: #e8f2ff;
   --warn: #9a3412;
-  --shadow: 0 20px 60px rgba(27, 34, 38, 0.08);
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.08);
 }
 
 * {
@@ -37,20 +37,24 @@ textarea {
 .app-shell {
   width: min(1180px, calc(100vw - 32px));
   margin: 0 auto;
-  padding: 28px 0 32px;
+  padding: 24px 0 36px;
 }
 
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(150px, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 8px 0 24px;
+  gap: 16px;
+  padding: 8px 0 18px;
+}
+
+.brand-block {
+  min-width: 0;
 }
 
 .topbar h1 {
   margin: 0;
-  font-size: 34px;
+  font-size: 38px;
   line-height: 1;
   letter-spacing: 0;
 }
@@ -63,6 +67,7 @@ textarea {
 
 .topbar-actions {
   display: flex;
+  justify-content: end;
   align-items: end;
   gap: 12px;
 }
@@ -99,6 +104,86 @@ textarea {
   box-shadow: none;
 }
 
+.secondary-action {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 0 14px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  cursor: pointer;
+}
+
+.secondary-action:hover {
+  border-color: var(--accent-strong);
+  background: #cfe2e1;
+}
+
+.secondary-action:disabled {
+  cursor: not-allowed;
+  color: #8b949c;
+  border-color: #d8dde0;
+  background: #eef0f1;
+}
+
+.field-separator {
+  height: 1px;
+  margin: 22px 0;
+  background: var(--line);
+}
+
+.mode-switch {
+  display: flex;
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  scrollbar-width: none;
+}
+
+.mode-switch::-webkit-scrollbar {
+  display: none;
+}
+
+.mode-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: max-content;
+  min-height: 30px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0 14px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mode-tab:hover {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.mode-tab.is-active {
+  color: var(--text);
+  background: var(--panel);
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.mode-panel[hidden] {
+  display: none;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
@@ -119,6 +204,23 @@ textarea {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
   overflow: hidden;
+}
+
+.epub-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 520px);
+}
+
+.epub-pane {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.form-action {
+  width: 100%;
+  margin-top: 4px;
 }
 
 fieldset {
@@ -209,7 +311,7 @@ input[type="file"] {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
-  background: #fbfaf6;
+  background: #f9f9fb;
 }
 
 .status-strip strong {
@@ -251,7 +353,7 @@ input[type="file"] {
   grid-template-columns: 3.5ch minmax(0, 1fr);
   gap: 10px;
   padding: 10px 12px;
-  border-bottom: 1px solid #ece7dc;
+  border-bottom: 1px solid #ececf0;
   line-height: 1.45;
 }
 
@@ -307,12 +409,12 @@ input[type="file"] {
 
   .topbar {
     align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 14px;
   }
 
   .topbar h1 {
-    font-size: 28px;
+    font-size: 30px;
   }
 
   .primary-action {
@@ -326,6 +428,16 @@ input[type="file"] {
 
   .language-switcher {
     width: 100%;
+  }
+
+  .mode-switch {
+    width: 100%;
+  }
+
+  .mode-tab {
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
   }
 
   fieldset,
